@@ -521,11 +521,59 @@
         letter-spacing: -0.08em;
       }
 
+      .score-summary {
+        display: flex;
+        align-items: stretch;
+        justify-content: center;
+        gap: 14px;
+        margin-bottom: 28px;
+      }
+
+      .score-summary .result-score {
+        margin-bottom: 0;
+      }
+
       .result-score small {
         color: var(--muted);
         font-size: 1.1rem;
         font-weight: 800;
         letter-spacing: 0;
+      }
+
+      .best-score-panel {
+        display: inline-flex;
+        flex-direction: column;
+        justify-content: center;
+        min-width: 145px;
+        padding: 11px 16px;
+        border: 1px solid var(--line);
+        border-radius: 15px;
+        color: var(--muted);
+        font-size: 11px;
+        font-weight: 800;
+        letter-spacing: 0.05em;
+        text-transform: uppercase;
+        background: var(--surface-soft);
+      }
+
+      .best-score-panel strong {
+        color: var(--accent);
+        font-size: 1.7rem;
+        line-height: 1.15;
+        letter-spacing: -0.05em;
+      }
+
+      .best-score-panel small {
+        font-size: 0.75rem;
+        letter-spacing: 0;
+        text-transform: none;
+      }
+
+      .high-score-message {
+        margin: -14px 0 28px;
+        color: var(--success);
+        font-size: 14px;
+        font-weight: 800;
       }
 
       .results .restart-button {
@@ -642,6 +690,15 @@
           margin-top: 27px;
         }
 
+        .score-summary {
+          flex-direction: column;
+          align-items: center;
+        }
+
+        .best-score-panel {
+          width: min(100%, 180px);
+        }
+
         .answer {
           min-height: 54px;
           padding: 10px;
@@ -721,9 +778,19 @@
           <p class="eyebrow">Mission complete</p>
           <h2 id="results-title">Stellar work!</h2>
           <p id="results-copy" class="result-copy"></p>
-          <div class="result-score">
-            <span id="final-score">0</span><small>/ 10 correct</small>
+          <div class="score-summary">
+            <div class="result-score" aria-label="Current score">
+              <span id="final-score">0</span><small>/ 10 correct</small>
+            </div>
+            <div id="best-score-panel" class="best-score-panel" hidden>
+              Best mission score
+              <strong id="best-score">0</strong>
+              <small>/ 10 correct</small>
+            </div>
           </div>
+          <p id="high-score-message" class="high-score-message" aria-live="polite" hidden>
+            New high score!
+          </p>
           <button id="restart-button" class="restart-button" type="button">
             <span aria-hidden="true">↻</span> Play again
           </button>
@@ -795,6 +862,9 @@
         },
       ];
 
+      const BEST_SCORE_STORAGE_KEY = "space-quiz-best-score";
+      const STORAGE_PROBE_KEY = "space-quiz-storage-probe";
+
       const elements = {
         quizView: document.getElementById("quiz-view"),
         results: document.getElementById("results"),
@@ -813,11 +883,47 @@
         resultsEmoji: document.getElementById("results-emoji"),
         resultsTitle: document.getElementById("results-title"),
         resultsCopy: document.getElementById("results-copy"),
+        bestScorePanel: document.getElementById("best-score-panel"),
+        bestScore: document.getElementById("best-score"),
+        highScoreMessage: document.getElementById("high-score-message"),
       };
 
       let currentQuestion = 0;
       let score = 0;
       let hasAnswered = false;
+      let bestScore = null;
+      let storageAvailable = false;
+
+      function loadBestScore() {
+        try {
+          const storage = window.localStorage;
+          storage.setItem(STORAGE_PROBE_KEY, "1");
+          storage.removeItem(STORAGE_PROBE_KEY);
+          const storedScore = storage.getItem(BEST_SCORE_STORAGE_KEY);
+
+          storageAvailable = true;
+          if (storedScore === null) return 0;
+
+          const parsedScore = Number(storedScore);
+          return Number.isInteger(parsedScore) && parsedScore >= 0 && parsedScore <= questions.length
+            ? parsedScore
+            : 0;
+        } catch {
+          storageAvailable = false;
+          return null;
+        }
+      }
+
+      function saveBestScore() {
+        try {
+          window.localStorage.setItem(BEST_SCORE_STORAGE_KEY, String(bestScore));
+          return true;
+        } catch {
+          storageAvailable = false;
+          bestScore = null;
+          return false;
+        }
+      }
 
       function renderQuestion() {
         const current = questions[currentQuestion];
@@ -885,6 +991,16 @@
 
       function showResults() {
         const percentage = score / questions.length;
+        bestScore = loadBestScore();
+        const previousBestScore = bestScore;
+        const isNewHighScore =
+          storageAvailable && previousBestScore !== null && score > previousBestScore;
+
+        if (isNewHighScore) {
+          bestScore = score;
+          saveBestScore();
+        }
+
         let emoji = "🛰️";
         let title = "Mission complete!";
         let copy = "You made it through the stars. Every answer is another step into the cosmos.";
@@ -913,6 +1029,11 @@
         elements.resultsTitle.textContent = title;
         elements.resultsCopy.textContent = copy;
         elements.finalScore.textContent = score;
+        elements.bestScorePanel.hidden = !storageAvailable;
+        elements.highScoreMessage.hidden = !isNewHighScore || !storageAvailable;
+        if (storageAvailable) {
+          elements.bestScore.textContent = bestScore;
+        }
         elements.restartButton.focus();
       }
 
@@ -935,6 +1056,7 @@
       });
 
       elements.restartButton.addEventListener("click", restart);
+      bestScore = loadBestScore();
       renderQuestion();
     </script>
   </body>
