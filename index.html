@@ -528,7 +528,12 @@
         letter-spacing: 0;
       }
 
-      .results .restart-button {
+      .results-actions {
+        display: grid;
+        gap: 12px;
+      }
+
+      .results-actions .restart-button {
         width: 100%;
       }
 
@@ -722,11 +727,16 @@
           <h2 id="results-title">Stellar work!</h2>
           <p id="results-copy" class="result-copy"></p>
           <div class="result-score">
-            <span id="final-score">0</span><small>/ 10 correct</small>
+            <span id="final-score">0</span><small>/ <span id="final-score-total">10</span> correct</small>
           </div>
-          <button id="restart-button" class="restart-button" type="button">
-            <span aria-hidden="true">↻</span> Play again
-          </button>
+          <div class="results-actions">
+            <button id="review-button" class="restart-button" type="button" hidden>
+              <span aria-hidden="true">↺</span> Review missed questions
+            </button>
+            <button id="restart-button" class="restart-button" type="button">
+              <span aria-hidden="true">↻</span> Play again
+            </button>
+          </div>
         </div>
       </section>
     </main>
@@ -804,28 +814,34 @@
         answers: document.getElementById("answers"),
         feedback: document.getElementById("feedback"),
         nextButton: document.getElementById("next-button"),
+        reviewButton: document.getElementById("review-button"),
         restartButton: document.getElementById("restart-button"),
         score: document.getElementById("score"),
         progressLabel: document.getElementById("progress-label"),
         progressFill: document.getElementById("progress-fill"),
         progressTrack: document.querySelector(".progress-track"),
         finalScore: document.getElementById("final-score"),
+        finalScoreTotal: document.getElementById("final-score-total"),
         resultsEmoji: document.getElementById("results-emoji"),
         resultsTitle: document.getElementById("results-title"),
         resultsCopy: document.getElementById("results-copy"),
       };
 
+      let activeQuestions = questions;
       let currentQuestion = 0;
       let score = 0;
       let hasAnswered = false;
+      let missedQuestions = [];
 
       function renderQuestion() {
-        const current = questions[currentQuestion];
+        const totalQuestions = activeQuestions.length;
+        const current = activeQuestions[currentQuestion];
         hasAnswered = false;
         elements.questionKicker.textContent = `Question ${String(currentQuestion + 1).padStart(2, "0")}`;
         elements.question.textContent = current.question;
-        elements.progressLabel.textContent = `${currentQuestion + 1} / ${questions.length}`;
-        elements.progressFill.style.width = `${((currentQuestion + 1) / questions.length) * 100}%`;
+        elements.progressLabel.textContent = `${currentQuestion + 1} / ${totalQuestions}`;
+        elements.progressFill.style.width = `${((currentQuestion + 1) / totalQuestions) * 100}%`;
+        elements.progressTrack.setAttribute("aria-valuemax", totalQuestions);
         elements.progressTrack.setAttribute("aria-valuenow", currentQuestion + 1);
         elements.answers.innerHTML = "";
         elements.feedback.textContent = "";
@@ -854,7 +870,7 @@
         if (hasAnswered) return;
         hasAnswered = true;
 
-        const current = questions[currentQuestion];
+        const current = activeQuestions[currentQuestion];
         const answerButtons = [...elements.answers.children];
         const selectedButton = answerButtons[selectedIndex];
         const correctButton = answerButtons[current.correct];
@@ -871,6 +887,7 @@
           elements.feedback.className = "feedback good";
           elements.score.textContent = score;
         } else {
+          missedQuestions.push(current);
           selectedButton.classList.add("wrong");
           correctButton.classList.add("reveal");
           elements.feedback.textContent = `Not quite — ${current.explanation}`;
@@ -878,13 +895,14 @@
         }
 
         elements.nextButton.textContent =
-          currentQuestion === questions.length - 1 ? "See your results" : "Next question";
+          currentQuestion === activeQuestions.length - 1 ? "See your results" : "Next question";
         elements.nextButton.hidden = false;
         elements.nextButton.focus();
       }
 
       function showResults() {
-        const percentage = score / questions.length;
+        const totalQuestions = activeQuestions.length;
+        const percentage = score / totalQuestions;
         let emoji = "🛰️";
         let title = "Mission complete!";
         let copy = "You made it through the stars. Every answer is another step into the cosmos.";
@@ -913,20 +931,32 @@
         elements.resultsTitle.textContent = title;
         elements.resultsCopy.textContent = copy;
         elements.finalScore.textContent = score;
+        elements.finalScoreTotal.textContent = totalQuestions;
+        elements.reviewButton.hidden = missedQuestions.length === 0;
         elements.restartButton.focus();
       }
 
-      function restart() {
+      function startRound(nextQuestions) {
+        activeQuestions = nextQuestions;
         currentQuestion = 0;
         score = 0;
+        missedQuestions = [];
         elements.score.textContent = "0";
         elements.quizView.hidden = false;
         elements.results.hidden = true;
         renderQuestion();
       }
 
+      function restart() {
+        startRound(questions);
+      }
+
+      function reviewMissedQuestions() {
+        startRound([...missedQuestions]);
+      }
+
       elements.nextButton.addEventListener("click", () => {
-        if (currentQuestion === questions.length - 1) {
+        if (currentQuestion === activeQuestions.length - 1) {
           showResults();
           return;
         }
@@ -934,8 +964,9 @@
         renderQuestion();
       });
 
+      elements.reviewButton.addEventListener("click", reviewMissedQuestions);
       elements.restartButton.addEventListener("click", restart);
-      renderQuestion();
+      startRound(questions);
     </script>
   </body>
 </html>
