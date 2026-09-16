@@ -887,7 +887,7 @@
           elements.feedback.className = "feedback good";
           elements.score.textContent = score;
         } else {
-          missedQuestions.push(current);
+          if (!missedQuestions.includes(current)) missedQuestions.push(current);
           selectedButton.classList.add("wrong");
           correctButton.classList.add("reveal");
           elements.feedback.textContent = `Not quite — ${current.explanation}`;
