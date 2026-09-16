@@ -831,7 +831,8 @@
       let currentQuestion = 0;
       let score = 0;
       let hasAnswered = false;
-      let missedQuestions = [];
+      let roundMisses = [];
+      let reviewQuestions = [];
 
       function renderQuestion() {
         const totalQuestions = activeQuestions.length;
@@ -887,7 +888,7 @@
           elements.feedback.className = "feedback good";
           elements.score.textContent = score;
         } else {
-          if (!missedQuestions.includes(current)) missedQuestions.push(current);
+          if (!roundMisses.includes(current)) roundMisses.push(current);
           selectedButton.classList.add("wrong");
           correctButton.classList.add("reveal");
           elements.feedback.textContent = `Not quite — ${current.explanation}`;
@@ -932,7 +933,8 @@
         elements.resultsCopy.textContent = copy;
         elements.finalScore.textContent = score;
         elements.finalScoreTotal.textContent = totalQuestions;
-        elements.reviewButton.hidden = missedQuestions.length === 0;
+        reviewQuestions = [...roundMisses];
+        elements.reviewButton.hidden = reviewQuestions.length === 0;
         (elements.reviewButton.hidden ? elements.restartButton : elements.reviewButton).focus();
       }
 
@@ -940,7 +942,7 @@
         activeQuestions = nextQuestions;
         currentQuestion = 0;
         score = 0;
-        missedQuestions = [];
+        roundMisses = [];
         elements.score.textContent = "0";
         elements.quizView.hidden = false;
         elements.results.hidden = true;
@@ -952,7 +954,7 @@
       }
 
       function reviewMissedQuestions() {
-        startRound([...missedQuestions]);
+        startRound(reviewQuestions);
       }
 
       elements.nextButton.addEventListener("click", () => {
