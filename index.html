@@ -933,7 +933,7 @@
         elements.finalScore.textContent = score;
         elements.finalScoreTotal.textContent = totalQuestions;
         elements.reviewButton.hidden = missedQuestions.length === 0;
-        elements.restartButton.focus();
+        (elements.reviewButton.hidden ? elements.restartButton : elements.reviewButton).focus();
       }
 
       function startRound(nextQuestions) {
